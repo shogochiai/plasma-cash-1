@@ -1,5 +1,5 @@
 const CryptoCards = artifacts.require("CryptoCards");
-const RootChain = artifacts.require("RootChain");
+const PlasmaCash = artifacts.require("PlasmaCash");
 const ValidatorManagerContract = artifacts.require("ValidatorManagerContract");
 
 module.exports = async function(deployer, network, accounts) {
@@ -8,9 +8,9 @@ module.exports = async function(deployer, network, accounts) {
         const vmc = await ValidatorManagerContract.deployed();
         console.log(`ValidatorManagerContract deployed at address: ${vmc.address}`);
 
-        await deployer.deploy(RootChain, vmc.address);
-        const root = await RootChain.deployed();
-        console.log(`RootChain deployed at address: ${root.address}`);
+        await deployer.deploy(PlasmaCash, vmc.address);
+        const root = await PlasmaCash.deployed();
+        console.log(`PlasmaCash deployed at address: ${root.address}`);
 
         await deployer.deploy(CryptoCards, root.address);
         const cards = await CryptoCards.deployed();

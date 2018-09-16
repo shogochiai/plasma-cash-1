@@ -1,6 +1,6 @@
 const ValidatorManagerContract = artifacts.require("ValidatorManagerContract");
 const CryptoCards = artifacts.require("CryptoCards");
-const RootChain = artifacts.require("RootChain");
+const PlasmaCash = artifacts.require("PlasmaCash");
 import {increaseTimeTo, duration} from './helpers/increaseTime'
 import assertRevert from './helpers/assertRevert.js';
 
@@ -26,7 +26,7 @@ contract("Plasma ERC721 - Multiple Validators and ERC721 tokens", async function
 
     beforeEach(async function() {
         vmc = await ValidatorManagerContract.new({from: owner});
-        plasma = await RootChain.new(vmc.address, {from: owner});
+        plasma = await PlasmaCash.new(vmc.address, {from: owner});
         cards = await CryptoCards.new(plasma.address);
         cards2 = await CryptoCards.new(plasma.address);
 
