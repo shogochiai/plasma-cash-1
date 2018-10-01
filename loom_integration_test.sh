@@ -38,6 +38,7 @@ function start_chains {
         $LOOM_BIN run > loom.log 2>&1 &  
         loom_pid=$!
         echo "Launched Loom - Log(loom.log) Pid(${loom_pid})"
+        sleep 5 #incase slow machine
     fi
 
     # Wait for Ganache & Loom to spin up
