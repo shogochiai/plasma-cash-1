@@ -34,7 +34,7 @@ function start_chains {
     echo 'Launched ganache' $ganache_pid
 
     if [[ "$DEBUG_LOOM" == false ]]; then
-        pkill -9 hostileoperator ; true
+        pkill -9 hostileoperator || true
         cd $LOOM_DIR
         $LOOM_BIN run > loom.log 2>&1 &  
         loom_pid=$!
