@@ -4,32 +4,37 @@ import BN from 'bn.js'
 import { PlasmaUser } from 'loom-js'
 
 import { increaseTime, getEthBalanceAtAddress } from './ganache-helpers'
-import { sleep, ADDRESSES, ACCOUNTS, setupContracts, pollForBlockChange } from './config'
+import {
+  sleep,
+  ADDRESSES,
+  ACCOUNTS,
+  setupContracts,
+  web3Endpoint,
+  dappchainEndpoint,
+  eventsEndpoint
+} from './config'
 
 export async function runChallengeAfterDemo(t: test.Test) {
-  const web3Endpoint = 'ws://127.0.0.1:8545'
-  const dappchainEndpoint = 'http://localhost:46658'
   const web3 = new Web3(new Web3.providers.WebsocketProvider(web3Endpoint))
   const { cards } = setupContracts(web3)
   const cardsAddress = ADDRESSES.token_contract
 
-  const authority = PlasmaUser.createUser(
-    web3Endpoint,
-    ADDRESSES.root_chain,
-    dappchainEndpoint,
-    ACCOUNTS.authority
-  )
   const mallory = PlasmaUser.createUser(
-    web3Endpoint,
+    web3,
     ADDRESSES.root_chain,
     dappchainEndpoint,
-    ACCOUNTS.mallory
+    eventsEndpoint,
+    web3.eth.accounts.privateKeyToAccount(ACCOUNTS.mallory).address,
+    'mallory_db'
   )
+
   const dan = PlasmaUser.createUser(
-    web3Endpoint,
+    web3,
     ADDRESSES.root_chain,
     dappchainEndpoint,
-    ACCOUNTS.dan
+    eventsEndpoint,
+    web3.eth.accounts.privateKeyToAccount(ACCOUNTS.dan).address,
+    'dan_db'
   )
 
   // Give Mallory 5 tokens
@@ -58,9 +63,9 @@ export async function runChallengeAfterDemo(t: test.Test) {
 
   // Mallory -> Dan
   const coin = await mallory.getPlasmaCoinAsync(deposit1Slot)
-  let currentBlock = await authority.getCurrentBlockAsync()
+  let currentBlock = await mallory.getCurrentBlockAsync()
   await mallory.transferAndVerifyAsync(deposit1Slot, dan.ethAddress, 6)
-  currentBlock = await pollForBlockChange(authority, currentBlock, 20, 2000)
+  currentBlock = await mallory.pollForBlockChange(currentBlock, 20, 2000)
   t.equal(await dan.receiveAndWatchCoinAsync(deposit1Slot), true, 'Coin history verified')
 
   // Mallory attempts to exit spent coin (the one sent to Dan)
@@ -78,7 +83,7 @@ export async function runChallengeAfterDemo(t: test.Test) {
   // Jump forward in time by 8 days
   await increaseTime(web3, 8 * 24 * 3600)
 
-  await authority.finalizeExitsAsync()
+  await dan.finalizeExitsAsync()
 
   await dan.withdrawAsync(deposit1Slot)
 
@@ -95,7 +100,6 @@ export async function runChallengeAfterDemo(t: test.Test) {
   // Close the websocket, hacky :/
   // @ts-ignore
   web3.currentProvider.connection.close()
-  authority.disconnect()
   dan.disconnect()
   mallory.disconnect()
   t.end()

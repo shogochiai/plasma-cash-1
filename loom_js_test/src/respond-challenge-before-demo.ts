@@ -4,32 +4,37 @@ import Web3 from 'web3'
 import { PlasmaUser } from 'loom-js'
 
 import { increaseTime, getEthBalanceAtAddress } from './ganache-helpers'
-import { sleep, ADDRESSES, ACCOUNTS, setupContracts, pollForBlockChange } from './config'
+import {
+  sleep,
+  ADDRESSES,
+  ACCOUNTS,
+  setupContracts,
+  web3Endpoint,
+  dappchainEndpoint,
+  eventsEndpoint
+} from './config'
 
 export async function runRespondChallengeBeforeDemo(t: test.Test) {
-  const web3Endpoint = 'ws://127.0.0.1:8545'
-  const dappchainEndpoint = 'http://localhost:46658'
   const web3 = new Web3(new Web3.providers.WebsocketProvider(web3Endpoint))
   const { cards } = setupContracts(web3)
   const cardsAddress = ADDRESSES.token_contract
 
-  const authority = PlasmaUser.createUser(
-    web3Endpoint,
-    ADDRESSES.root_chain,
-    dappchainEndpoint,
-    ACCOUNTS.authority
-  )
   const dan = PlasmaUser.createUser(
-    web3Endpoint,
+    web3,
     ADDRESSES.root_chain,
     dappchainEndpoint,
-    ACCOUNTS.dan
+    eventsEndpoint,
+    web3.eth.accounts.privateKeyToAccount(ACCOUNTS.dan).address,
+    'dan_db'
   )
+
   const trudy = PlasmaUser.createUser(
-    web3Endpoint,
+    web3,
     ADDRESSES.root_chain,
     dappchainEndpoint,
-    ACCOUNTS.trudy
+    eventsEndpoint,
+    web3.eth.accounts.privateKeyToAccount(ACCOUNTS.trudy).address,
+    'trudy_db'
   )
 
   // Give Trudy 5 tokens
@@ -48,9 +53,9 @@ export async function runRespondChallengeBeforeDemo(t: test.Test) {
 
   // Trudy sends her coin to Dan
   const coin = await trudy.getPlasmaCoinAsync(deposit1Slot)
-  let currentBlock = await authority.getCurrentBlockAsync()
+  let currentBlock = await trudy.getCurrentBlockAsync()
   await trudy.transferAndVerifyAsync(deposit1Slot, dan.ethAddress, 6)
-  currentBlock = await pollForBlockChange(authority, currentBlock, 20, 2000)
+  currentBlock = await trudy.pollForBlockChange(currentBlock, 20, 2000)
 
   // Dan exits the coin received by Trudy
   await dan.exitAsync(deposit1Slot)
@@ -66,7 +71,7 @@ export async function runRespondChallengeBeforeDemo(t: test.Test) {
   // Jump forward in time by 8 days
   await increaseTime(web3, 8 * 24 * 3600)
 
-  await authority.finalizeExitsAsync()
+  await dan.finalizeExitsAsync()
   await dan.withdrawAsync(deposit1Slot)
 
   const danBalanceBefore = await getEthBalanceAtAddress(web3, dan.ethAddress)
@@ -80,11 +85,10 @@ export async function runRespondChallengeBeforeDemo(t: test.Test) {
   t.equal(danTokensEnd.toNumber(), 7, 'END: Dan has correct number of tokens')
 
   // Close the websocket, hacky :/
-  // @ts-ignore
-  web3.currentProvider.connection.close()
-  authority.disconnect()
   dan.disconnect()
   trudy.disconnect()
+  // @ts-ignore
+  web3.currentProvider.connection.close()
 
   t.end()
 }
